@@ -46,7 +46,6 @@ lazy_static!{
 
 ///A scheduler providing functionalities to manage the simulation according to event-based scheduling.
 ///Schedule works with a FIFO priority queue that sorts agents based on scheduling time and an integer priority value.
-#[derive(Copy)]
 pub struct Schedule<A:'static + Agent + Clone + Send + Hash + Eq>{
     pub step: Mutex<usize>,
     pub time: Mutex<f64>,
