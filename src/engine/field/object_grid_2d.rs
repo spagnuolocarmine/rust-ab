@@ -22,6 +22,7 @@ impl<A: Eq + Hash + Clone + Copy> Grid2D<A> {
         }
     }
 
+
     /// Inserts the agent in the grid, with the agent itself as key and its position as value.
     ///
     /// # Example
@@ -54,6 +55,52 @@ impl<A: Eq + Hash + Clone + Copy> Grid2D<A> {
         self.locs.insert(agent, *new_pos);
         self.locs_inversed.insert(*new_pos, agent);
     }
+
+
+    /// Remove the agent from the grid.
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// use rust_ab::engine::agent::Agent;
+    /// use rust_ab::engine::field::object_grid_2d::Grid2D;
+    /// use rust_ab::engine::location::Int2D;
+    /// use rust_ab::engine::state::State;
+    ///
+    /// struct S {};
+    /// impl State for S{}
+    ///
+    /// #[derive(Copy, Clone, Eq, PartialEq, Hash, Debug)]
+    /// struct A {};
+    /// impl Agent for A {type SimState = S;
+    ///
+    /// fn step(&mut self, state: &S) {
+    ///         println!("Stepping!");
+    ///     }
+    /// }
+    /// let mut grid = Grid2D::new(10,10);
+    /// let mut agent = A{};
+    /// let loc = Int2D{x: 2, y: 2};
+    /// grid.set_object_location(agent, &loc);
+    /// let a2 = agent.clone();
+    /// let loc2 = loc.clone();
+    /// assert!(loc == loc2);
+    /// grid.update();
+    /// grid.remove(&a2);
+    /// grid.update();
+    /// println!("{:?}", grid.get_object_at_location(&loc2));
+    /// assert!(grid.get_object_at_location(&loc2) == None);
+    /// assert!(grid.get_object_location(agent) == None);
+    /// ```
+    pub fn remove_object(&self, agent: &A)
+    {
+        if let Some(result) = self.locs.remove(agent){
+            let pos = result.1;
+            self.locs_inversed.remove(&pos);
+        }
+
+    }
+
 
     /// Fetches the position of the agent in the grid.
     ///
