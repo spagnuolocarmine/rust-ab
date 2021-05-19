@@ -42,41 +42,7 @@ lazy_static!{
                                 };
 }
 
-#[macro_export]
-    ///step = numero di steo
-    ///schedule
-    ///tipo agente
-    ///state
-    ///num variabile di parametri opzionali
-macro_rules!  simulate{
-    ($step:expr, $sch:expr, $ty:ty, $s:expr $(,$opt:expr)*) => {
 
-    let n_step:u128 = $step;
-    let mut schedule:Schedule<$ty> = $sch;
-    println!("Num of steps {}", n_step);
-
-    $(
-        println!("Option received. {}", $opt);
-    )*
-
-
-    let start = std::time::Instant::now();
-    for _ in 0..n_step{
-        schedule.step(&mut $s);
-        $s.step +=1;
-    }
-
-    let run_duration = start.elapsed();
-
-    println!("Time elapsed in testing schedule is: {:?}", run_duration);
-    println!("({:?}) Total Step:{}\nStep for seconds: {:?}",
-    stringify!($ty),
-    schedule.step,
-    schedule.step as f64 /(run_duration.as_nanos() as f64 * 1e-9)
-
-        );
-    };
-}
 
 pub struct Schedule<A:'static + Agent + Clone + Send>{
     pub step: usize,
