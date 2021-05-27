@@ -54,6 +54,7 @@ impl<O: Hash + Eq + Clone + Display, L: Clone + Hash + Display> Edge<O, L> {
     }
 }
 
+
 pub struct Network<O: Hash + Eq + Clone + Display, L: Clone + Hash + Display> {
     pub edges: DBDashMap<O, Vec<Edge<O, L>>>,
     pub direct: bool,
@@ -66,19 +67,19 @@ Barabási-Albert’s preferential attachment model
 #[macro_export]
 macro_rules! preferential_attachment_BA {
     (  $nodes:expr, $network:expr, $node_type:ty, $edge_opt:ty) => {
-        { 
+        
             let n_nodes = $nodes.len();
-            let mut net:Network<$node_type, $edge_opt> = $network;
-            net.removeAllEdges();
+            let _net:Network<$node_type, $edge_opt> = $network;
+            $network.removeAllEdges();
 
             if n_nodes == 0 { return; }
-            net.addNode(&$nodes[0]);
-            net.edges.update();
+            $network.addNode(&$nodes[0]);
+            $network.edges.update();
             if n_nodes == 1 { return; }
-            net.addNode(&$nodes[1]);
+            $network.addNode(&$nodes[1]);
 
-            net.addEdge(&$nodes[0], &$nodes[1], Simple);
-            net.edges.update();
+            $network.addEdge(&$nodes[0], &$nodes[1], Simple);
+            $network.edges.update();
 
             let init_edge:usize = 1;
 
@@ -86,41 +87,39 @@ macro_rules! preferential_attachment_BA {
             {
                 let node = $nodes[i] as $node_type;
                 
-                net.add_prob_edge(&node, &init_edge);
-                net.edges.update();
+                $network.add_prob_edge(&node, &init_edge);
+                $network.edges.update();
 
             }
             
-            $network = net;
-        }
+        
     };
 
     (  $nodes:expr, $network:expr, $node_type:ty, $edge_opt:ty, $init_edges:expr) => {
-        { 
+         
             let n_nodes = $nodes.len();
             let edge_to_gen = $init_edges as usize;
-            let mut net:Network<$node_type, $edge_opt> = $network;
-            net.removeAllEdges();
+            let _net: &mut Network<$node_type, $edge_opt> = $network;
+            $network.removeAllEdges();
 
             if n_nodes == 0 { return; }
-            net.addNode(&$nodes[0]);
-            net.edges.update();
+            $network.addNode(&$nodes[0]);
+            $network.edges.update();
             if n_nodes == 1 { return; }
-            net.addNode(&$nodes[1]);
+            $network.addNode(&$nodes[1]);
 
-            net.addEdge(&$nodes[0], &$nodes[1], Simple);
-            net.edges.update();
+            $network.addEdge(&$nodes[0], &$nodes[1], Simple);
+            $network.edges.update();
             for i in 2..n_nodes 
             {
                 let node = $nodes[i] as $node_type;
                 
-                net.add_prob_edge(&node, &edge_to_gen);
-                net.edges.update();
+                $network.add_prob_edge(&node, &edge_to_gen);
+                $network.edges.update();
 
             }
             
-            $network = net;
-        }
+        
     };
 
 }

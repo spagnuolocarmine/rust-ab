@@ -33,7 +33,9 @@ mod tests {
     struct BasicState {
         pub stepped: RwLock<bool>,
     }
-    impl State for BasicState {}
+    impl State for BasicState {
+        type AgentToSchedule = BasicAgent;
+    }
 
     #[derive(Copy, Clone)]
     struct BasicAgent;
