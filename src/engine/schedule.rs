@@ -42,7 +42,7 @@ lazy_static! {
                                 n
                                 };
 }
-pub struct Schedule{
+pub struct Schedule {
     pub step: usize,
     pub time: f64,
     pub events: Mutex<PriorityQueue<AgentImpl, Priority>>,
@@ -67,7 +67,7 @@ impl Pair {
     }
 }
 
-impl Schedule{
+impl Schedule {
     pub fn new() -> Schedule {
         //println!("Using {} thread",*THREAD_NUM);
         cfg_if! {
@@ -131,7 +131,7 @@ impl Schedule{
         self.events.lock().unwrap().push(a, pr);
     }
 
-    pub fn simulate(&mut self, state: &mut Box<dyn State>, num_step: u128) {
+    pub fn simulate(&mut self, state: &mut Box<&mut dyn State>, num_step: u128) {
         for _ in 0..num_step {
             self.step(state);
         }
@@ -242,7 +242,7 @@ impl Schedule{
         }
     }
     else{
-        pub fn step(&mut self,state: &mut <A as Agent>::SimState){
+        pub fn step(&mut self,state: &mut Box<&mut dyn State>){
             self.newly_scheduled.clear();
             if self.step == 0{
                 state.update(self.step);
@@ -257,7 +257,7 @@ impl Schedule{
                 return;
             }
 
-            let mut cevents: Vec<Pair<A>> = Vec::new();
+            let mut cevents: Vec<Pair> = Vec::new();
 
             match events.lock().unwrap().peek() {
                 Some(item) => {
@@ -298,8 +298,8 @@ impl Schedule{
 
                 item.agentimpl.agent.step(state);
 
-                let should_remove = item.agentimpl.agent.should_remove(&state);
-                let should_reproduce = item.agentimpl.agent.should_reproduce(&state);
+                let should_remove = item.agentimpl.agent.should_remove(state);
+                let should_reproduce = item.agentimpl.agent.should_reproduce(state);
 
                 if item.agentimpl.repeating && !should_remove {
                     self.schedule_once(
@@ -312,11 +312,11 @@ impl Schedule{
                 if let Some(new_agents) = should_reproduce {
                     for (new_agent, schedule_options) in new_agents {
                         let ScheduleOptions{ordering, repeating} = schedule_options;
-                        let agent = *new_agent;
-                        let mut new_agent_impl = AgentImpl::new(agent.clone());
+                        //let agent = *new_agent;
+                        let mut new_agent_impl = AgentImpl::new(new_agent.clone());
                         new_agent_impl.repeating = repeating;
                         self.schedule_once(new_agent_impl, item.priority.time + 1., ordering);
-                        self.newly_scheduled.push(agent);
+                        self.newly_scheduled.push(new_agent.clone());
                     }
                 }
             }

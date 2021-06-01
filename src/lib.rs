@@ -10,18 +10,17 @@ pub use bevy;
 
 use rand::distributions::{Distribution, Uniform};
 
-
 #[macro_export]
-    ///step = simulation step number
-    ///schedule
-    ///agents
-    ///states
-    ///other parametes
-macro_rules!  simulate{ 
+///step = simulation step number
+///schedule
+///agents
+///states
+///other parametes
+macro_rules!  simulate{
     ($step:expr, $sch:expr, $ty:ty, $s:expr $(,$opt:expr)*) => {
 
     let n_step:u128 = $step;
-    let mut schedule:Schedule<$ty> = $sch;
+    let mut schedule:Schedule = $sch;
     println!("Num of steps {}", n_step);
 
     $(
@@ -43,9 +42,9 @@ macro_rules!  simulate{
     schedule.step as f64 /(run_duration.as_nanos() as f64 * 1e-9)
 
         );
- 
+
     //Schedule don't use copy
-    $sch = schedule; 
+    $sch = schedule;
     };
 }
 
@@ -53,7 +52,6 @@ macro_rules!  simulate{
 ///param type, min, max, num of param to gen
 macro_rules! gen_param {
     ( $type:ty, $min:expr, $max:expr, $n:expr) => {{
-        
         let minimum: $type;
         let maximum: $type;
         minimum = $min;
@@ -61,14 +59,15 @@ macro_rules! gen_param {
 
         let (minimum, maximum) = if minimum > maximum {
             (maximum, minimum)
-        }
-        else if minimum == maximum {
+        } else if minimum == maximum {
             (minimum, maximum + 1 as $type)
-        } else { (minimum, maximum)};
+        } else {
+            (minimum, maximum)
+        };
 
         let between = Uniform::from(minimum..maximum);
         let mut rng = rand::thread_rng();
-        let dist:Vec<$type> = between.sample_iter(&mut rng).take($n).collect();
+        let dist: Vec<$type> = between.sample_iter(&mut rng).take($n).collect();
 
         dist
     }};
@@ -82,26 +81,23 @@ macro_rules! gen_param {
 
         let (minimum, maximum) = if minimum > maximum {
             (maximum, minimum)
-        }
-        else if minimum == maximum {
+        } else if minimum == maximum {
             (minimum, maximum + 1 as $type)
-        } else { (minimum, maximum)};
+        } else {
+            (minimum, maximum)
+        };
 
         //let between = Uniform::from(minimum..maximum);
         let mut rng = rand::thread_rng();
 
         rng.gen_range(minimum..maximum)
-
-        
-    }}
+    }};
 }
-
-
 
 #[macro_export]
 macro_rules! build_dataframe {
     ($name:ident $(,$element: ident: $ty: ty)*) => {
-        #[derive(Debug)]        
+        #[derive(Debug)]
         struct $name {
             pub $($element: Vec<$ty>),*
         }
@@ -116,7 +112,7 @@ macro_rules! build_dataframe {
     };
 
     ($name:ident, [input $($element: ident: $ty: ty),*] {output $($element2: ident: $ty2: ty),*}) => {
-        #[derive(Debug)]        
+        #[derive(Debug)]
         struct $name {
             pub $($element: Vec<$ty>),*
         }
@@ -133,11 +129,11 @@ macro_rules! build_dataframe {
 
 ///WORK IN PROGRESS, DONT USE IT
 #[macro_export]
-    ///step = simulation step number
-    ///schedule
-    ///agents
-    ///states
-    ///sim param
+///step = simulation step number
+///schedule
+///agents
+///states
+///sim param
 macro_rules! explore {
     ($nstep: expr, $sch:expr, $agent_ty:ty, $s:expr, $rep_conf:expr $(,$param:ident: $ty: ty)*) => {{
         //typecheck
@@ -156,7 +152,7 @@ macro_rules! explore {
         //Build config
         $(
             let num_conf_per_val = n_conf / $param.len();
-            
+
             for el in &$param{
                 for i in 0..num_conf_per_val{
                     conf.$param.push(*el);
@@ -169,27 +165,27 @@ macro_rules! explore {
         //load dataframe
         for i in 0..n_conf{
             //setting i-th run
-            
-            $(
-                $s.$param = conf.$param[i]; 
-            )*
-            
 
-            
+            $(
+                $s.$param = conf.$param[i];
+            )*
+
+
+
             for j in 0..$rep_conf{
                 $s.init(&mut schedule);
 
                 println!("-----\nCONF {}, rep {}", i, j+1);
                 $(
-                    println!("{}: {}", stringify!($s.$param), $s.$param); 
-                )* 
+                    println!("{}: {}", stringify!($s.$param), $s.$param);
+                )*
                 simulate!($nstep, schedule, $agent_ty, $s);
                 schedule.step  = 0;
             }
             //a[] = call output(state) function
             //add to dataframe a[]
             //return dataframe
-        } 
+        }
 
     }}
 }
