@@ -3,13 +3,12 @@ use crate::engine::schedule::ScheduleOptions;
 use crate::engine::state::State;
 use std::collections::HashMap;
 
-pub trait Agent {
-    type SimState: State + Sync + Send;
+pub trait Agent: Clone + Send + Sync {
 
-    fn step(&mut self, state: &Self::SimState);
+    fn step(&mut self, state: &Box<dyn State>);
 
     /// Specifies whether this agent should be removed from the schedule after the current step.
-    fn should_remove(&mut self, _state: &Self::SimState) -> bool {
+    fn should_remove(&mut self, _state: &Box<dyn State>) -> bool {
         false
     }
 
@@ -17,7 +16,7 @@ pub trait Agent {
     /// This should NOT return an agent that is already scheduled.
     fn should_reproduce(
         &mut self,
-        _state: &Self::SimState,
+        _state: &Box<dyn State>
     ) -> Option<HashMap<Box<Self>, ScheduleOptions>> {
         None
     }

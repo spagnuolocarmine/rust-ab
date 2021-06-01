@@ -42,24 +42,24 @@ lazy_static! {
                                 n
                                 };
 }
-pub struct Schedule<A: 'static + Agent + Clone + Send> {
+pub struct Schedule{
     pub step: usize,
     pub time: f64,
-    pub events: Mutex<PriorityQueue<AgentImpl<A>, Priority>>,
+    pub events: Mutex<PriorityQueue<AgentImpl, Priority>>,
     pub pool: Option<ThreadPool>,
     // Mainly used in the visualization to render newly scheduled agents.
     // This is cleared at the start of each step.
-    pub newly_scheduled: Vec<A>,
+    pub newly_scheduled: Vec<Box<dyn Agent>>,
 }
 
 #[derive(Clone)]
-pub struct Pair<A: 'static + Agent + Clone> {
-    agentimpl: AgentImpl<A>,
+pub struct Pair {
+    agentimpl: AgentImpl,
     priority: Priority,
 }
 
-impl<A: 'static + Agent + Clone> Pair<A> {
-    fn new(agent: AgentImpl<A>, the_priority: Priority) -> Pair<A> {
+impl Pair {
+    fn new(agent: AgentImpl, the_priority: Priority) -> Pair {
         Pair {
             agentimpl: agent,
             priority: the_priority,
@@ -67,8 +67,8 @@ impl<A: 'static + Agent + Clone> Pair<A> {
     }
 }
 
-impl<A: 'static + Agent + Clone + Send + Sync> Schedule<A> {
-    pub fn new() -> Schedule<A> {
+impl Schedule{
+    pub fn new() -> Schedule {
         //println!("Using {} thread",*THREAD_NUM);
         cfg_if! {
             if #[cfg(feature ="parallel")]{
@@ -91,7 +91,7 @@ impl<A: 'static + Agent + Clone + Send + Sync> Schedule<A> {
         }
     }
 
-    pub fn with_threads(thread_num: usize) -> Schedule<A> {
+    pub fn with_threads(thread_num: usize) -> Schedule {
         //println!("Using {} thread",thread_num);
         cfg_if! {
             if #[cfg(feature ="parallel")]{
@@ -114,7 +114,7 @@ impl<A: 'static + Agent + Clone + Send + Sync> Schedule<A> {
         }
     }
 
-    pub fn schedule_once(&mut self, agent: AgentImpl<A>, the_time: f64, the_ordering: i64) {
+    pub fn schedule_once(&mut self, agent: AgentImpl, the_time: f64, the_ordering: i64) {
         self.events.lock().unwrap().push(
             agent,
             Priority {
@@ -124,14 +124,14 @@ impl<A: 'static + Agent + Clone + Send + Sync> Schedule<A> {
         );
     }
 
-    pub fn schedule_repeating(&mut self, agent: A, the_time: f64, the_ordering: i64) {
+    pub fn schedule_repeating(&mut self, agent: Box<dyn Agent>, the_time: f64, the_ordering: i64) {
         let mut a = AgentImpl::new(agent);
         a.repeating = true;
         let pr = Priority::new(the_time, the_ordering);
         self.events.lock().unwrap().push(a, pr);
     }
 
-    pub fn simulate<S: State>(&mut self, state: &mut <A as Agent>::SimState, num_step: u128) {
+    pub fn simulate(&mut self, state: &mut Box<dyn State>, num_step: u128) {
         for _ in 0..num_step {
             self.step(state);
         }
@@ -141,7 +141,7 @@ impl<A: 'static + Agent + Clone + Send + Sync> Schedule<A> {
         if #[cfg(feature ="parallel")]{
 
 
-        pub fn step(&mut self, state: &mut <A as Agent>::SimState){
+        pub fn step(&mut self, state: &Box<dyn State>){
             self.newly_scheduled.clear();
             let thread_num = self.pool.as_ref().unwrap().current_num_threads();
 
@@ -159,7 +159,7 @@ impl<A: 'static + Agent + Clone + Send + Sync> Schedule<A> {
             }
 
             let thread_division = (events.lock().unwrap().len() as f64 / thread_num as f64).ceil() as usize ;
-            let mut cevents: Vec<Vec<Pair<A>>> = vec![Vec::with_capacity(thread_division); thread_num];
+            let mut cevents: Vec<Vec<Pair>> = vec![Vec::with_capacity(thread_division); thread_num];
 
             let mut i = 0;
 

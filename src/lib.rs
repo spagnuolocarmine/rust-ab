@@ -114,6 +114,21 @@ macro_rules! build_dataframe {
             }
         }
     };
+
+    ($name:ident, [input $($element: ident: $ty: ty),*] {output $($element2: ident: $ty2: ty),*}) => {
+        #[derive(Debug)]        
+        struct $name {
+            pub $($element: Vec<$ty>),*
+        }
+
+        impl $name {
+            pub fn init() -> $name{
+                $name{ $(
+                    $element: Vec::new(),
+                )* }
+            }
+        }
+    };
 }
 
 ///WORK IN PROGRESS, DONT USE IT
@@ -151,8 +166,7 @@ macro_rules! explore {
             drop($param);
         )*
 
-        //create dataframe
-        
+        //load dataframe
         for i in 0..n_conf{
             //setting i-th run
             

@@ -34,13 +34,11 @@ mod tests {
         pub stepped: RwLock<bool>,
     }
     impl State for BasicState {
-        type AgentToSchedule = BasicAgent;
     }
 
     #[derive(Copy, Clone)]
     struct BasicAgent;
     impl Agent for BasicAgent {
-        type SimState = BasicState;
 
         fn step(&mut self, state: &BasicState) {
             let mut state_stepped = state.stepped.write().unwrap();
