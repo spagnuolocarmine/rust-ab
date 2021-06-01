@@ -1,16 +1,17 @@
+use std::f32::consts::PI;
 use std::fmt::Display;
 use std::hash::Hash;
 
 use bevy::prelude::Color;
+use bevy_canvas::{Canvas, DrawMode};
 
 use crate::bevy::prelude::{Res, ResMut, Vec2};
 use crate::engine::agent::Agent;
 use crate::engine::field::network::{Edge, Network};
 use crate::engine::location::Real2D;
-use crate::visualization::renderable::Render;
+use crate::visualization::agent_render::AgentRender;
 use crate::visualization::utils::arrow::Arrow;
-use bevy_canvas::{Canvas, DrawMode};
-use std::f32::consts::PI;
+use crate::visualization::wrappers::ActiveState;
 
 /// Allows customization of the arrow geometry used to render edges.
 pub struct ArrowOptions {
@@ -50,7 +51,7 @@ pub struct EdgeRenderInfo {
 pub trait NetworkRender<
     O: Hash + Eq + Clone + Display,
     L: Clone + Hash + Display,
-    A: 'static + Agent + Render + Clone + Send,
+    A: 'static + Agent + AgentRender + Clone + Send,
 >
 {
     /// Specify how to fetch a reference to the network from the state.
@@ -59,12 +60,12 @@ pub trait NetworkRender<
     /// Called for each edge to let the user specify how it should be rendered
     fn get_edge_info(edge: &Edge<O, L>) -> EdgeRenderInfo;
 
-    fn render(state: Res<A::SimState>, mut canvas: ResMut<Canvas>) {
+    fn render(state_wrapper: Res<ActiveState<A>>, mut canvas: ResMut<Canvas>) {
         if cfg!(target_arch = "wasm32") {
             panic!("Currently network visualization does not support WebGL shaders. https://github.com/Nilirad/bevy_canvas/blob/main/src/render/mod.rs#L257");
         }
 
-        let network = Self::get_network(&*state);
+        let network = Self::get_network(&((*state_wrapper).0));
         for node_edges in network.edges.values() {
             for edge in node_edges {
                 let EdgeRenderInfo {

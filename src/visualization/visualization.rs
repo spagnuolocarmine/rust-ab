@@ -1,15 +1,22 @@
 use bevy::prelude::*;
+use bevy::window::WindowResizeConstraints;
 use bevy::DefaultPlugins;
+use bevy_egui::EguiPlugin;
 
+use crate::bevy::diagnostic::FrameTimeDiagnosticsPlugin;
 use crate::engine::agent::Agent;
 use crate::engine::schedule::Schedule;
-use crate::visualization::on_state_init::OnStateInit;
-use crate::visualization::renderable::Render;
+use crate::engine::state::State;
+use crate::visualization::agent_render::AgentRender;
+use crate::visualization::asset_handle_factory::AssetHandleFactory;
 use crate::visualization::simulation_descriptor::SimulationDescriptor;
-use crate::visualization::sprite_render_factory::SpriteRenderFactory;
+use crate::visualization::systems::camera_system::camera_system;
 use crate::visualization::systems::init_system::init_system;
 use crate::visualization::systems::renderer_system::renderer_system;
 use crate::visualization::systems::simulation_system::simulation_system;
+use crate::visualization::systems::ui_system::ui_system;
+use crate::visualization::visualization_state::VisualizationState;
+use crate::visualization::wrappers::{ActiveSchedule, ActiveState, Initializer};
 
 /// The application main struct, used to build and start the event loop. Offers several methods in a builder-pattern style
 /// to allow for basic customization, such as background color, asset path and custom systems. Right now the framework
@@ -57,51 +64,76 @@ impl Visualization {
 
     /// Create the application and start it immediately. Requires a startup callback defined as a struct
     /// that implements [OnStateInit], along with the state and the schedule, which you manually create.
-    pub fn start<A: 'static + Agent + Render + Clone + Send, I: OnStateInit<A> + 'static>(
+    pub fn start<
+        A: 'static + Agent + AgentRender + Clone + Send,
+        I: VisualizationState<A> + 'static + Clone,
+    >(
         self,
         init_call: I,
-        state: A::SimState,
-        schedule: Schedule<A>,
     ) {
-        let mut app_builder = self.setup(init_call, state, schedule);
+        let mut app_builder = self.setup(init_call);
         app_builder.run()
     }
 
     /// Sets up the application, exposing the [AppBuilder]. Useful if you want to directly interface Bevy
     /// and add plugins, resources or systems yourself.
-    pub fn setup<A: 'static + Agent + Render + Clone + Send, I: OnStateInit<A> + 'static>(
+    pub fn setup<
+        A: 'static + Agent + AgentRender + Clone + Send,
+        I: VisualizationState<A> + Clone + 'static,
+    >(
         &self,
         init_call: I,
-        state: A::SimState,
-        schedule: Schedule<A>,
     ) -> AppBuilder {
-        let mut app = App::build();
-        app.add_plugins(DefaultPlugins);
-        #[cfg(target_arch = "wasm32")]
-        app.add_plugin(bevy_webgl2::WebGL2Plugin);
+        // Minimum constraints taking into account a 300 x 300 simulation window + a 300 width UI panel
+        let mut window_constraints = WindowResizeConstraints::default();
+        window_constraints.min_width = 600.;
+        window_constraints.min_height = 300.;
 
-        app.insert_resource(WindowDescriptor {
+        let window_descriptor = WindowDescriptor {
             title: self.window_name.parse().unwrap(),
             width: self.width,
             height: self.height,
             vsync: true,
+            resize_constraints: window_constraints,
             ..Default::default()
-        })
-        .insert_resource(SimulationDescriptor {
+        };
+
+        let mut app = App::build();
+        let schedule = Schedule::<A>::new();
+        let state = A::SimState::new();
+        let cloned_init_call = init_call.clone();
+
+        app.insert_resource(window_descriptor)
+            .add_plugins(DefaultPlugins)
+            .add_plugin(EguiPlugin);
+
+        #[cfg(target_arch = "wasm32")]
+        app.add_plugin(bevy_webgl2::WebGL2Plugin);
+
+        #[cfg(feature = "canvas")]
+        app.add_plugin(bevy_canvas::CanvasPlugin);
+
+        app.insert_resource(SimulationDescriptor {
+            title: self.window_name.parse().unwrap(),
             width: self.sim_width,
             height: self.sim_height,
             center_x: (self.width * 0.5) - (self.width - self.sim_width as f32) / 2.,
             center_y: (self.height * 0.5) - (self.height - self.sim_height as f32) / 2.,
+            paused: true,
+            ui_width: 300.,
         })
         .insert_resource(ClearColor(self.background_color))
-        .insert_resource(SpriteRenderFactory::new())
+        .insert_resource(AssetHandleFactory::new())
         .insert_resource(init_call)
-        .insert_resource(state)
-        .insert_resource(schedule)
+        .insert_resource(ActiveState::<A>(state))
+        .insert_resource(ActiveSchedule::<A>(schedule))
+        .insert_resource(Initializer(cloned_init_call, Default::default()))
         .add_startup_system(init_system::<A, I>.system())
-        .add_plugin(bevy_canvas::CanvasPlugin)
+        .add_plugin(FrameTimeDiagnosticsPlugin::default())
         .add_system(renderer_system::<A>.system().label("render"))
-        .add_system(simulation_system::<A>.system().before("render"));
+        .add_system(simulation_system::<A>.system().before("render"))
+        .add_system(ui_system::<A, I>.system().before("render"))
+        .add_system(camera_system.system());
 
         app
     }
@@ -110,9 +142,9 @@ impl Visualization {
 impl Default for Visualization {
     fn default() -> Self {
         Visualization {
-            width: 500.,
+            width: 600.,
             height: 300.,
-            sim_width: 500.,
+            sim_width: 300.,
             sim_height: 300.,
             window_name: env!("CARGO_PKG_NAME"),
             background_color: Color::rgb(1., 1., 1.),

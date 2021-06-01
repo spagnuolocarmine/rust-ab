@@ -9,13 +9,13 @@ use hashbrown::HashMap;
 /// A simple lazy loader of sprites, mainly for use with the Emoji sprite feature offered by the framework.
 /// This allows loading sprites only once, storing a handle pointing to the sprite resource itself and returning clones
 /// of the handle, for optimization purposes.
-pub struct SpriteRenderFactory {
+pub struct AssetHandleFactory {
     emoji_loaders: HashMap<String, Handle<ColorMaterial>>,
 }
 
-impl SpriteRenderFactory {
-    pub fn new() -> SpriteRenderFactory {
-        SpriteRenderFactory {
+impl AssetHandleFactory {
+    pub fn new() -> AssetHandleFactory {
+        AssetHandleFactory {
             emoji_loaders: HashMap::new(),
         }
     }
@@ -66,15 +66,15 @@ impl SpriteRenderFactory {
 
 /// A bundle of resources related to sprite assets, commonly used to edit the graphical representation of an agent.
 #[derive(SystemParam)]
-pub struct SpriteFactoryResource<'a> {
-    pub sprite_factory: ResMut<'a, SpriteRenderFactory>,
+pub struct AssetHandleFactoryResource<'a> {
+    pub sprite_factory: ResMut<'a, AssetHandleFactory>,
     pub asset_server: Res<'a, AssetServer>,
     pub materials: ResMut<'a, Assets<ColorMaterial>>,
     pub assets: ResMut<'a, Assets<Texture>>,
 }
 
-impl<'a> SpriteFactoryResource<'a> {
-    /// A proxy method that exposes [SpriteRenderFactory get_emoji_loader](SpriteRenderFactory#get_emoji_loader)
+impl<'a> AssetHandleFactoryResource<'a> {
+    /// A proxy method that exposes [AssetHandleFactory get_emoji_loader](AssetHandleFactory#get_emoji_loader)
     pub fn get_emoji_loader(&mut self, emoji_code: String) -> SpriteBundle {
         self.sprite_factory.get_emoji_loader(
             emoji_code,
@@ -83,7 +83,7 @@ impl<'a> SpriteFactoryResource<'a> {
         )
     }
 
-    /// A proxy method that exposes [SpriteRenderFactory get_material_handle](SpriteRenderFactory#get_material_handle)
+    /// A proxy method that exposes [AssetHandleFactory get_material_handle](AssetHandleFactory#get_material_handle)
     pub fn get_material_handle(&mut self, emoji_code: String) -> Handle<ColorMaterial> {
         self.sprite_factory.get_material_handle(
             emoji_code,

@@ -1,14 +1,15 @@
+#[cfg(any(feature = "visualization", feature = "visualization_wasm", doc))]
+pub use bevy;
+#[cfg(feature = "canvas")]
+pub use bevy_canvas;
+pub use rand;
+
 pub mod engine;
 pub mod utils;
-pub use rand; // Re-export rand to let users use the correct version, compatible with wasm
+// Re-export rand to let users use the correct version, compatible with wasm
 
 #[cfg(any(feature = "visualization", feature = "visualization_wasm", doc))]
 pub mod visualization;
-
-#[cfg(any(feature = "visualization", feature = "visualization_wasm", doc))]
-pub use bevy;
-#[cfg(any(feature = "visualization", feature = "visualization_wasm", doc))]
-pub use bevy_canvas;
 
 ///To do "Space exploration" each sim parameters need a triple: start, end and step
 pub enum Parameters {

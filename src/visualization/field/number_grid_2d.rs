@@ -9,13 +9,14 @@ use image::ImageBuffer;
 
 use crate::engine::agent::Agent;
 use crate::engine::location::Int2D;
-use crate::visualization::renderable::Render;
+use crate::visualization::agent_render::AgentRender;
+use crate::visualization::asset_handle_factory::AssetHandleFactoryResource;
 use crate::visualization::simulation_descriptor::SimulationDescriptor;
-use crate::visualization::sprite_render_factory::SpriteFactoryResource;
+use crate::visualization::wrappers::ActiveState;
 
 /// Allows rendering field structs as a single texture, to improve performance by sending the whole struct to the GPU in a single batch.
 /// Use the trait by declaring a wrapper struct over a field, for example over a NumberGrid2D<f64>, and implementing this trait on said wrapper.
-pub trait BatchRender<A: 'static + Agent + Render + Clone + Send> {
+pub trait BatchRender<A: 'static + Agent + AgentRender + Clone + Send> {
     /// Specifies the conversion from a 2d point in space in a pixel is done. The format of the return value
     /// is [Rgba8UnormSrgb]
     fn get_pixel(&self, pos: &Int2D) -> [u8; 4];
@@ -53,7 +54,7 @@ pub trait BatchRender<A: 'static + Agent + Render + Clone + Send> {
     /// Handles telling bevy how to draw the texture.
     fn render(
         &self,
-        sprite_render_factory: &mut SpriteFactoryResource,
+        sprite_render_factory: &mut AssetHandleFactoryResource,
         commands: &mut Commands,
         sim: &mut SimulationDescriptor,
     ) where
@@ -84,14 +85,14 @@ pub trait BatchRender<A: 'static + Agent + Render + Clone + Send> {
         mut assets: ResMut<Assets<Texture>>,
         mut materials: ResMut<Assets<ColorMaterial>>,
         mut query: Query<(&Marker<Self>, &mut Handle<ColorMaterial>)>,
-        state: Res<A::SimState>,
+        state_wrapper: Res<ActiveState<A>>,
     ) where
         Self: 'static + Sized + Sync + Send,
     {
         let material = query.single_mut();
         if let Ok(query_result) = material {
             let material = &*query_result.1;
-            let new_texture = Self::get_texture_from_state(&*state);
+            let new_texture = Self::get_texture_from_state(&(*state_wrapper).0);
 
             let color_material = materials.get_mut(material).unwrap();
             let old_texture_handle = color_material.texture.as_ref().unwrap();

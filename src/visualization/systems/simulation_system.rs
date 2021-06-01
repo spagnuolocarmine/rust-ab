@@ -1,14 +1,19 @@
 use bevy::prelude::ResMut;
 
-use crate::engine::schedule::Schedule;
-use crate::visualization::renderable::Render;
+use crate::bevy::prelude::Res;
+use crate::visualization::agent_render::AgentRender;
+use crate::visualization::simulation_descriptor::SimulationDescriptor;
+use crate::visualization::wrappers::{ActiveSchedule, ActiveState};
 
 /// The simulation system steps the schedule once per frame, effectively synchronizing frames and schedule steps.
-pub fn simulation_system<A: Render + Clone>(
-    mut schedule: ResMut<Schedule<A>>,
-    mut state: ResMut<A::SimState>,
+pub fn simulation_system<A: AgentRender + Clone>(
+    mut schedule_wrapper: ResMut<ActiveSchedule<A>>,
+    mut state_wrapper: ResMut<ActiveState<A>>,
+    sim_data: Res<SimulationDescriptor>,
 ) {
-    schedule.step(&mut *state);
+    if !sim_data.paused {
+        schedule_wrapper.0.step(&mut (*state_wrapper).0);
+    }
 }
 
 #[cfg(test)]
@@ -23,13 +28,19 @@ mod tests {
     use crate::engine::agent::Agent;
     use crate::engine::schedule::Schedule;
     use crate::engine::state::State;
-    use crate::visualization::renderable::{Render, SpriteType};
+    use crate::visualization::agent_render::{AgentRender, SpriteType};
     use crate::visualization::systems::simulation_system::simulation_system;
 
     struct BasicState {
         pub stepped: RwLock<bool>,
     }
-    impl State for BasicState {}
+    impl State for BasicState {
+        fn new() -> Self {
+            Self {
+                stepped: RwLock::new(false),
+            }
+        }
+    }
 
     #[derive(Copy, Clone)]
     struct BasicAgent;
@@ -42,7 +53,7 @@ mod tests {
         }
     }
 
-    impl Render for BasicAgent {
+    impl AgentRender for BasicAgent {
         fn sprite(&self) -> SpriteType {
             SpriteType::Emoji(String::from("bird"))
         }
@@ -75,9 +86,7 @@ mod tests {
     #[test]
     fn agent_setup() {
         // Setup resources
-        let state = BasicState {
-            stepped: RwLock::new(false),
-        };
+        let state = BasicState::new();
         let mut schedule = Schedule::<BasicAgent>::new();
         let agent = BasicAgent;
         schedule.schedule_repeating(agent, 0., 0);

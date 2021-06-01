@@ -1,14 +1,14 @@
-use bevy::prelude::{Commands, ResMut};
+use bevy::prelude::Commands;
 
 use crate::engine::agent::Agent;
 use crate::engine::schedule::Schedule;
-use crate::visualization::renderable::Render;
+use crate::visualization::agent_render::AgentRender;
+use crate::visualization::asset_handle_factory::AssetHandleFactoryResource;
 use crate::visualization::simulation_descriptor::SimulationDescriptor;
-use crate::visualization::sprite_render_factory::SpriteFactoryResource;
 
 /// A simple trait which lets the developer set up the visualization components of his simulation.
 /// This method will be called in a Bevy startup system.
-pub trait OnStateInit<A: 'static + Agent + Render + Clone + Send>: Send + Sync {
+pub trait VisualizationState<A: 'static + Agent + AgentRender + Clone + Send>: Send + Sync {
     /// The method that will be called during the visualization inizialization.
     ///
     /// # Arguments
@@ -22,11 +22,11 @@ pub trait OnStateInit<A: 'static + Agent + Render + Clone + Send>: Send + Sync {
     /// # Examples
     ///
     /// ```
-    /// use rust_ab::visualization::on_state_init::OnStateInit;
+    /// use rust_ab::visualization::visualization_state::VisualizationState;
     /// use bevy::prelude::{Commands, ResMut, Visible};
-    /// use rust_ab::visualization::sprite_render_factory::SpriteFactoryResource;
+    /// use rust_ab::visualization::asset_handle_factory::AssetHandleFactoryResource;
     /// use rust_ab::visualization::simulation_descriptor::SimulationDescriptor;
-    /// use rust_ab::visualization::renderable::{SpriteType, Render};
+    /// use rust_ab::visualization::agent_render::{SpriteType, AgentRender};
     /// # use rust_ab::engine::state::State;
     /// # use rust_ab::engine::agent::Agent;
     /// use rust_ab::bevy::prelude::Transform;
@@ -42,7 +42,7 @@ pub trait OnStateInit<A: 'static + Agent + Render + Clone + Send>: Send + Sync {
     /// #    fn step(&mut self,state: &Self::SimState) {}
     /// # }
     ///
-    /// # impl Render for MyAgent{
+    /// # impl AgentRender for MyAgent{
     /// #   fn sprite(&self) -> SpriteType {
     /// #       SpriteType::Emoji(String::from("bird"))
     /// #   }
@@ -61,8 +61,8 @@ pub trait OnStateInit<A: 'static + Agent + Render + Clone + Send>: Send + Sync {
     /// # }
     /// pub struct VisState;
     ///
-    /// impl OnStateInit<MyAgent> for VisState {
-    ///     fn on_init(&self, mut commands: Commands, mut sprite_render_factory: SpriteFactoryResource, mut state: ResMut<MyState>, mut schedule: ResMut<Schedule<MyAgent>>, mut sim: ResMut<SimulationDescriptor>) {
+    /// impl VisualizationState<MyAgent> for VisState {
+    ///     fn on_init(&self, mut commands: Commands, mut sprite_render_factory: AssetHandleFactoryResource, mut state: ResMut<MyState>, mut schedule: ResMut<Schedule<MyAgent>>, mut sim: ResMut<SimulationDescriptor>) {
     ///         let agent = MyAgent;
     ///         schedule.schedule_repeating(agent, 0., 0);
     ///
@@ -76,9 +76,9 @@ pub trait OnStateInit<A: 'static + Agent + Render + Clone + Send>: Send + Sync {
     fn on_init(
         &self,
         commands: Commands,
-        sprite_render_factory: SpriteFactoryResource,
-        state: ResMut<A::SimState>,
-        schedule: ResMut<Schedule<A>>,
-        sim: ResMut<SimulationDescriptor>,
+        sprite_render_factory: AssetHandleFactoryResource,
+        state: &mut A::SimState,
+        schedule: &mut Schedule<A>,
+        sim: &mut SimulationDescriptor,
     );
 }

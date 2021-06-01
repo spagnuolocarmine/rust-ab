@@ -2,7 +2,7 @@ use bevy::prelude::{Commands, Quat, SpriteBundle, Transform, Vec3, Visible};
 
 use crate::engine::agent::Agent;
 
-pub trait Render: Agent + Send + Sync + Sized + 'static {
+pub trait AgentRender: Agent + Send + Sync + Sized + 'static {
     /// Specifies the asset to use when visualizing the agent.
     /// This should be overwritten to return a string which can point to two things:
     /// 1) An emoji code, a list of compatible ones can be found here: https://www.webfx.com/tools/emoji-cheat-sheet/
