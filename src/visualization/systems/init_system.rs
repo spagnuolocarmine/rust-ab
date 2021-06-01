@@ -25,7 +25,7 @@ pub fn init_system<
     window: Res<WindowDescriptor>,
     mut sim: ResMut<SimulationDescriptor>,
 ) {
-    /// Right handed coordinate system, equal to how it is implemented in [`OrthographicProjection::new_2d()`].
+    // Right handed coordinate system, equal to how it is implemented in [`OrthographicProjection::new_2d()`].
     let far = 1000.;
     // Offset the whole simulation to the left to take the width of the UI panel into account.
     let ui_offset = -sim.ui_width;

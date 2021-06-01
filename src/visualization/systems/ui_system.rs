@@ -1,5 +1,4 @@
 use bevy::prelude::{Entity, Query, Without};
-use bevy_egui::egui::plot::{Curve, Plot};
 use bevy_egui::egui::Color32;
 use bevy_egui::{egui, EguiContext};
 
