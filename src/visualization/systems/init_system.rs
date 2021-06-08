@@ -5,6 +5,7 @@ use crate::bevy::prelude::Transform;
 use crate::bevy::render::camera::{Camera, DepthCalculation, OrthographicProjection};
 use crate::bevy::render::render_graph::base::camera::CAMERA_2D;
 use crate::engine::agent::Agent;
+use crate::engine::state::State;
 use crate::visualization::agent_render::AgentRender;
 use crate::visualization::asset_handle_factory::AssetHandleFactoryResource;
 use crate::visualization::simulation_descriptor::SimulationDescriptor;
@@ -15,13 +16,14 @@ use crate::visualization::wrappers::{ActiveSchedule, ActiveState};
 /// then calls the user provided init callback.
 pub fn init_system<
     A: 'static + Agent + AgentRender + Clone + Send,
-    I: VisualizationState<A> + 'static,
+    I: VisualizationState<S, A> + 'static,
+    S: State,
 >(
     on_init: Res<I>,
     sprite_factory: AssetHandleFactoryResource,
     mut commands: Commands,
-    mut state_resource: ResMut<ActiveState<A>>,
-    mut schedule_resource: ResMut<ActiveSchedule<A>>,
+    mut state_resource: ResMut<ActiveState<S>>,
+    mut schedule_resource: ResMut<ActiveSchedule>,
     window: Res<WindowDescriptor>,
     mut sim: ResMut<SimulationDescriptor>,
 ) {

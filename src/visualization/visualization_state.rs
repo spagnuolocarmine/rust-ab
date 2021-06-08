@@ -2,13 +2,16 @@ use bevy::prelude::Commands;
 
 use crate::engine::agent::Agent;
 use crate::engine::schedule::Schedule;
+use crate::engine::state::State;
 use crate::visualization::agent_render::AgentRender;
 use crate::visualization::asset_handle_factory::AssetHandleFactoryResource;
 use crate::visualization::simulation_descriptor::SimulationDescriptor;
 
 /// A simple trait which lets the developer set up the visualization components of his simulation.
 /// This method will be called in a Bevy startup system.
-pub trait VisualizationState<A: 'static + Agent + AgentRender + Clone + Send>: Send + Sync {
+pub trait VisualizationState<S: State, A: 'static + Agent + AgentRender + Clone + Send>:
+    Send + Sync
+{
     /// The method that will be called during the visualization inizialization.
     ///
     /// # Arguments
@@ -77,8 +80,13 @@ pub trait VisualizationState<A: 'static + Agent + AgentRender + Clone + Send>: S
         &self,
         commands: Commands,
         sprite_render_factory: AssetHandleFactoryResource,
-        state: &mut A::SimState,
-        schedule: &mut Schedule<A>,
+        state: &mut S,
+        schedule: &mut Schedule,
         sim: &mut SimulationDescriptor,
     );
+
+    /// The user must specify which AgentRender is associated to which Agent through this method
+    //fn to_agent_render(&self, agent: Box<dyn Agent>) -> Box<dyn AgentRender>;
+
+    fn before_render(&mut self, schedule: &mut Schedule) {}
 }

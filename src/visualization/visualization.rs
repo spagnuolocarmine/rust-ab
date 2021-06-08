@@ -66,12 +66,14 @@ impl Visualization {
     /// that implements [OnStateInit], along with the state and the schedule, which you manually create.
     pub fn start<
         A: 'static + Agent + AgentRender + Clone + Send,
-        I: VisualizationState<A> + 'static + Clone,
+        I: VisualizationState<S, A> + 'static + Clone,
+        S: State,
     >(
         self,
         init_call: I,
+        state: S,
     ) {
-        let mut app_builder = self.setup(init_call);
+        let mut app_builder = self.setup(init_call, state);
         app_builder.run()
     }
 
@@ -79,10 +81,12 @@ impl Visualization {
     /// and add plugins, resources or systems yourself.
     pub fn setup<
         A: 'static + Agent + AgentRender + Clone + Send,
-        I: VisualizationState<A> + Clone + 'static,
+        I: VisualizationState<S, A> + Clone + 'static,
+        S: State,
     >(
         &self,
         init_call: I,
+        state: S,
     ) -> AppBuilder {
         // Minimum constraints taking into account a 300 x 300 simulation window + a 300 width UI panel
         let mut window_constraints = WindowResizeConstraints::default();
@@ -99,8 +103,8 @@ impl Visualization {
         };
 
         let mut app = App::build();
-        let schedule = Schedule::<A>::new();
-        let state = A::SimState::new();
+        let schedule = Schedule::new();
+        //let state = S::new();
         let cloned_init_call = init_call.clone();
 
         app.insert_resource(window_descriptor)
@@ -125,14 +129,18 @@ impl Visualization {
         .insert_resource(ClearColor(self.background_color))
         .insert_resource(AssetHandleFactory::new())
         .insert_resource(init_call)
-        .insert_resource(ActiveState::<A>(state))
-        .insert_resource(ActiveSchedule::<A>(schedule))
-        .insert_resource(Initializer(cloned_init_call, Default::default()))
-        .add_startup_system(init_system::<A, I>.system())
+        .insert_resource(ActiveState(state))
+        .insert_resource(ActiveSchedule(schedule))
+        .insert_resource(Initializer(
+            cloned_init_call,
+            Default::default(),
+            Default::default(),
+        ))
+        .add_startup_system(init_system::<A, I, S>.system())
         .add_plugin(FrameTimeDiagnosticsPlugin::default())
-        .add_system(renderer_system::<A>.system().label("render"))
-        .add_system(simulation_system::<A>.system().before("render"))
-        .add_system(ui_system::<A, I>.system().before("render"))
+        .add_system(renderer_system::<A, S>.system().label("render"))
+        .add_system(simulation_system::<A, S>.system().before("render"))
+        .add_system(ui_system::<A, I, S>.system().before("render"))
         .add_system(camera_system.system());
 
         app

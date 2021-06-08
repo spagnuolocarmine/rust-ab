@@ -27,7 +27,7 @@ macro_rules!  simulate{
     ($step:expr, $sch:expr, $ty:ty, $s:expr $(,$opt:expr)*) => {
 
     let n_step:u128 = $step;
-    let mut schedule:Schedule<$ty> = $sch;
+    let mut schedule:Schedule = $sch;
     println!("Num of steps {}", n_step);
 
     $(
@@ -38,7 +38,6 @@ macro_rules!  simulate{
     let start = std::time::Instant::now();
     for _ in 0..n_step{
         schedule.step(&mut $s);
-        $s.step +=1;
     }
 
     let run_duration = start.elapsed();

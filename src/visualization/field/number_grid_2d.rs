@@ -9,6 +9,7 @@ use image::ImageBuffer;
 
 use crate::engine::agent::Agent;
 use crate::engine::location::Int2D;
+use crate::engine::state::State;
 use crate::visualization::agent_render::AgentRender;
 use crate::visualization::asset_handle_factory::AssetHandleFactoryResource;
 use crate::visualization::simulation_descriptor::SimulationDescriptor;
@@ -16,7 +17,7 @@ use crate::visualization::wrappers::ActiveState;
 
 /// Allows rendering field structs as a single texture, to improve performance by sending the whole struct to the GPU in a single batch.
 /// Use the trait by declaring a wrapper struct over a field, for example over a NumberGrid2D<f64>, and implementing this trait on said wrapper.
-pub trait BatchRender<A: 'static + Agent + AgentRender + Clone + Send> {
+pub trait BatchRender<A: 'static + Agent + AgentRender + Clone + Send, S: State> {
     /// Specifies the conversion from a 2d point in space in a pixel is done. The format of the return value
     /// is [Rgba8UnormSrgb]
     fn get_pixel(&self, pos: &Int2D) -> [u8; 4];
@@ -78,14 +79,14 @@ pub trait BatchRender<A: 'static + Agent + AgentRender + Clone + Send> {
 
     /// Must override to specify how to fetch the texture of self from the state. Your state struct
     /// should have self as one of its field, just return the result of texture() applied on it.
-    fn get_texture_from_state(state: &A::SimState) -> Texture;
+    fn get_texture_from_state(state: &S) -> Texture;
 
     /// The system that will handle batch rendering self. You must insert this system in the [AppBuilder].
     fn batch_render(
         mut assets: ResMut<Assets<Texture>>,
         mut materials: ResMut<Assets<ColorMaterial>>,
         mut query: Query<(&Marker<Self>, &mut Handle<ColorMaterial>)>,
-        state_wrapper: Res<ActiveState<A>>,
+        state_wrapper: Res<ActiveState<S>>,
     ) where
         Self: 'static + Sized + Sync + Send,
     {

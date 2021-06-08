@@ -13,11 +13,15 @@ use crate::visualization::simulation_descriptor::SimulationDescriptor;
 use crate::visualization::visualization_state::VisualizationState;
 use crate::visualization::wrappers::{ActiveSchedule, ActiveState};
 
-pub fn ui_system<A: AgentRender + Clone, I: VisualizationState<A> + Clone + 'static>(
+pub fn ui_system<
+    A: AgentRender + Clone,
+    I: VisualizationState<S, A> + Clone + 'static,
+    S: State,
+>(
     egui_context: ResMut<EguiContext>,
     mut sim_data: ResMut<SimulationDescriptor>,
-    mut active_schedule_wrapper: ResMut<ActiveSchedule<A>>,
-    mut active_state_wrapper: ResMut<ActiveState<A>>,
+    mut active_schedule_wrapper: ResMut<ActiveSchedule>,
+    mut active_state_wrapper: ResMut<ActiveState<S>>,
     on_init: Res<I>,
     sprite_factory: AssetHandleFactoryResource,
     query: Query<Entity, Without<Camera>>,
@@ -54,17 +58,17 @@ pub fn ui_system<A: AgentRender + Clone, I: VisualizationState<A> + Clone + 'sta
                             commands.entity(entity).despawn();
                         }
                         // Reset schedule and state and call the initializer method
-                        let mut new_schedule = Schedule::<A>::new();
-                        let mut new_state = A::SimState::new();
+                        let mut new_schedule = Schedule::new();
+                        active_state_wrapper.0.reset();
                         on_init.on_init(
                             commands,
                             sprite_factory,
-                            &mut new_state,
+                            &mut active_state_wrapper.0,
                             &mut new_schedule,
                             &mut *sim_data,
                         );
                         (*active_schedule_wrapper).0 = new_schedule;
-                        (*active_state_wrapper).0 = new_state;
+                        //(*active_state_wrapper).0 = new_state;
                     }
 
                     if ui.button("⏸ Pause").clicked() {

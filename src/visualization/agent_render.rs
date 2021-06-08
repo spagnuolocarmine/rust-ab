@@ -1,6 +1,7 @@
 use bevy::prelude::{Commands, Quat, SpriteBundle, Transform, Vec3, Visible};
 
 use crate::engine::agent::Agent;
+use crate::engine::state::State;
 
 pub trait AgentRender: Agent + Send + Sync + Sized + 'static {
     /// Specifies the asset to use when visualizing the agent.
@@ -19,7 +20,7 @@ pub trait AgentRender: Agent + Send + Sync + Sized + 'static {
     /// Do NOT rely on local fields of the struct implementing Render to save the location of the agent:
     /// they will NOT be automatically updated when the RustAB scheduler steps. Instead, use the state
     /// passed as argument to fetch the agent position and act on that.
-    fn position(&self, state: &Self::SimState) -> (f32, f32, f32);
+    fn position(&self, state: &Box<dyn State>) -> (f32, f32, f32);
 
     /// Specifies the scale of the sprite in the window.
     fn scale(&self) -> (f32, f32);
@@ -31,10 +32,12 @@ pub trait AgentRender: Agent + Send + Sync + Sized + 'static {
     /// the given position, scale and rotation defined by the three previous methods.
     fn setup_graphics(
         self,
+        //agent: Box<dyn Agent>,
         mut sprite_bundle: SpriteBundle,
         commands: &mut Commands,
-        state: &Self::SimState,
+        state: &Box<dyn State>,
     ) {
+        // AgentVis separate object which accepts an agent reference
         let (x, y, z) = self.position(state);
         let (scale_x, scale_y) = self.scale();
         let rotation = self.rotation();
@@ -53,7 +56,7 @@ pub trait AgentRender: Agent + Send + Sync + Sized + 'static {
     }
 
     /// Update the graphical variables based on the information coming from the model through the state.
-    fn update(&mut self, transform: &mut Transform, state: &Self::SimState, visible: &mut Visible);
+    fn update(&mut self, transform: &mut Transform, state: &Box<&dyn State>, visible: &mut Visible);
 }
 
 #[derive(Clone)]

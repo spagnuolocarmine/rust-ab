@@ -1,18 +1,23 @@
 use bevy::prelude::ResMut;
 
 use crate::bevy::prelude::Res;
+use crate::engine::state::State;
 use crate::visualization::agent_render::AgentRender;
 use crate::visualization::simulation_descriptor::SimulationDescriptor;
 use crate::visualization::wrappers::{ActiveSchedule, ActiveState};
 
 /// The simulation system steps the schedule once per frame, effectively synchronizing frames and schedule steps.
-pub fn simulation_system<A: AgentRender + Clone>(
-    mut schedule_wrapper: ResMut<ActiveSchedule<A>>,
-    mut state_wrapper: ResMut<ActiveState<A>>,
+pub fn simulation_system<A: AgentRender + Clone, S: State>(
+    mut schedule_wrapper: ResMut<ActiveSchedule>,
+    mut state_wrapper: ResMut<ActiveState<S>>,
     sim_data: Res<SimulationDescriptor>,
+    //vis_state: Res<VisState>
 ) {
     if !sim_data.paused {
-        schedule_wrapper.0.step(&mut (*state_wrapper).0);
+        //vis_state.before_render()
+        schedule_wrapper
+            .0
+            .step(&mut Box::new(&mut (*state_wrapper).0));
     }
 }
 
