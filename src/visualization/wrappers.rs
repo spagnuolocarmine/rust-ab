@@ -11,8 +11,4 @@ pub struct ActiveState<S: State>(pub S);
 /// A wrapper of the currently active schedule, used as a Bevy resource.
 pub struct ActiveSchedule(pub Schedule);
 /// Initialization method to set up state and agents, wrapped as a Bevy resource.
-pub struct Initializer<A: AgentRender + Clone, I: VisualizationState<S, A> + 'static, S: State>(
-    pub I,
-    pub PhantomData<A>,
-    pub PhantomData<S>,
-);
+pub struct Initializer<I: VisualizationState<S> + 'static, S: State>(pub I, pub PhantomData<S>);

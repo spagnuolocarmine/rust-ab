@@ -13,11 +13,7 @@ use crate::visualization::simulation_descriptor::SimulationDescriptor;
 use crate::visualization::visualization_state::VisualizationState;
 use crate::visualization::wrappers::{ActiveSchedule, ActiveState};
 
-pub fn ui_system<
-    A: AgentRender + Clone,
-    I: VisualizationState<S, A> + Clone + 'static,
-    S: State,
->(
+pub fn ui_system<I: VisualizationState<S> + Clone + 'static, S: State>(
     egui_context: ResMut<EguiContext>,
     mut sim_data: ResMut<SimulationDescriptor>,
     mut active_schedule_wrapper: ResMut<ActiveSchedule>,
@@ -60,12 +56,19 @@ pub fn ui_system<
                         // Reset schedule and state and call the initializer method
                         let mut new_schedule = Schedule::new();
                         active_state_wrapper.0.reset();
-                        on_init.on_init(
+                        active_state_wrapper.0.init(&mut new_schedule);
+                        /*on_init.on_init(
                             commands,
                             sprite_factory,
                             &mut active_state_wrapper.0,
                             &mut new_schedule,
                             &mut *sim_data,
+                        );*/
+                        on_init.setup_graphics(
+                            &mut new_schedule,
+                            &mut commands,
+                            &mut active_state_wrapper.0,
+                            sprite_factory,
                         );
                         (*active_schedule_wrapper).0 = new_schedule;
                         //(*active_state_wrapper).0 = new_state;

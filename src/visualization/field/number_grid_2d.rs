@@ -17,7 +17,7 @@ use crate::visualization::wrappers::ActiveState;
 
 /// Allows rendering field structs as a single texture, to improve performance by sending the whole struct to the GPU in a single batch.
 /// Use the trait by declaring a wrapper struct over a field, for example over a NumberGrid2D<f64>, and implementing this trait on said wrapper.
-pub trait BatchRender<A: 'static + Agent + AgentRender + Clone + Send, S: State> {
+pub trait BatchRender<S: State> {
     /// Specifies the conversion from a 2d point in space in a pixel is done. The format of the return value
     /// is [Rgba8UnormSrgb]
     fn get_pixel(&self, pos: &Int2D) -> [u8; 4];

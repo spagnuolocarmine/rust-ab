@@ -64,11 +64,7 @@ impl Visualization {
 
     /// Create the application and start it immediately. Requires a startup callback defined as a struct
     /// that implements [OnStateInit], along with the state and the schedule, which you manually create.
-    pub fn start<
-        A: 'static + Agent + AgentRender + Clone + Send,
-        I: VisualizationState<S, A> + 'static + Clone,
-        S: State,
-    >(
+    pub fn start<I: VisualizationState<S> + 'static + Clone, S: State>(
         self,
         init_call: I,
         state: S,
@@ -79,14 +75,10 @@ impl Visualization {
 
     /// Sets up the application, exposing the [AppBuilder]. Useful if you want to directly interface Bevy
     /// and add plugins, resources or systems yourself.
-    pub fn setup<
-        A: 'static + Agent + AgentRender + Clone + Send,
-        I: VisualizationState<S, A> + Clone + 'static,
-        S: State,
-    >(
+    pub fn setup<I: VisualizationState<S> + Clone + 'static, S: State>(
         &self,
         init_call: I,
-        state: S,
+        mut state: S,
     ) -> AppBuilder {
         // Minimum constraints taking into account a 300 x 300 simulation window + a 300 width UI panel
         let mut window_constraints = WindowResizeConstraints::default();
@@ -103,8 +95,10 @@ impl Visualization {
         };
 
         let mut app = App::build();
-        let schedule = Schedule::new();
+        let mut schedule = Schedule::new();
         //let state = S::new();
+        state.init(&mut schedule);
+        //state.update(0);
         let cloned_init_call = init_call.clone();
 
         app.insert_resource(window_descriptor)
@@ -131,16 +125,12 @@ impl Visualization {
         .insert_resource(init_call)
         .insert_resource(ActiveState(state))
         .insert_resource(ActiveSchedule(schedule))
-        .insert_resource(Initializer(
-            cloned_init_call,
-            Default::default(),
-            Default::default(),
-        ))
-        .add_startup_system(init_system::<A, I, S>.system())
+        .insert_resource(Initializer(cloned_init_call, Default::default()))
+        .add_startup_system(init_system::<I, S>.system())
         .add_plugin(FrameTimeDiagnosticsPlugin::default())
-        .add_system(renderer_system::<A, S>.system().label("render"))
-        .add_system(simulation_system::<A, S>.system().before("render"))
-        .add_system(ui_system::<A, I, S>.system().before("render"))
+        .add_system(renderer_system::<I, S>.system().label("render"))
+        .add_system(simulation_system::<S>.system().before("render"))
+        .add_system(ui_system::<I, S>.system().before("render"))
         .add_system(camera_system.system());
 
         app

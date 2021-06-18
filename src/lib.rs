@@ -2,6 +2,7 @@
 pub use bevy;
 #[cfg(feature = "canvas")]
 pub use bevy_canvas;
+pub use downcast_rs;
 pub use rand;
 
 pub mod engine;

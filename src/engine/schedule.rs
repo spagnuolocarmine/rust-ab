@@ -12,7 +12,6 @@ use crate::engine::agent::Agent;
 use crate::engine::agentimpl::AgentImpl;
 use crate::engine::priority::Priority;
 use crate::engine::state::State;
-use crate::visualization::agent_render::AgentRender;
 
 lazy_static! {
     pub static ref THREAD_NUM: usize =
