@@ -22,6 +22,8 @@ rayon="1.5.0"
 clap="2.33.3"
 ahash="0.6.2"
 dyn-clone="1.0.4"
+csv = "1.1.6"
+
 
 # Visualization features
 image = {version="0.23.14",optional=true}
@@ -53,7 +55,7 @@ harness = false
 
 # Must be kept separate and asked to the user due to missing support for conditional compilation of features
 # https://github.com/rust-lang/cargo/issues/7914
-[features]
+
 parallel = []
 visualization = [
     "bevy",

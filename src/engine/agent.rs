@@ -5,7 +5,7 @@ use dyn_clone::DynClone;
 use std::collections::HashMap;
 
 pub trait Agent: DynClone + Send + Sync {
-    fn step(&mut self, state: &Box<&mut dyn State>);
+    fn step(&mut self, state: &mut Box<&mut dyn State>);
 
     /// Specifies whether this agent should be removed from the schedule after the current step.
     fn should_remove(&mut self, _state: &Box<&mut dyn State>) -> bool {
