@@ -66,34 +66,6 @@ Barabási-Albert’s preferential attachment model
 */
 #[macro_export]
 macro_rules! preferential_attachment_BA {
-    (  $nodes:expr, $network:expr, $node_type:ty, $edge_opt:ty) => {
-        
-            let n_nodes = $nodes.len();
-            let _net:Network<$node_type, $edge_opt> = $network;
-            $network.removeAllEdges();
-
-            if n_nodes == 0 { return; }
-            $network.addNode(&$nodes[0]);
-            $network.edges.update();
-            if n_nodes == 1 { return; }
-            $network.addNode(&$nodes[1]);
-
-            $network.addEdge(&$nodes[0], &$nodes[1], Simple);
-            $network.edges.update();
-
-            let init_edge:usize = 1;
-
-            for i in 2..n_nodes 
-            {
-                let node = $nodes[i] as $node_type;
-                
-                $network.add_prob_edge(&node, &init_edge);
-                $network.edges.update();
-
-            }
-            
-        
-    };
 
     (  $nodes:expr, $network:expr, $node_type:ty, $edge_opt:ty, $init_edges:expr) => {
          
@@ -122,6 +94,10 @@ macro_rules! preferential_attachment_BA {
         
     };
 
+    (  $nodes:expr, $network:expr, $node_type:ty, $edge_opt:ty) => {
+        
+        preferential_attachment!($nodes, $network, $node_type, $edge_opt, 1);
+    };
 }
 
 

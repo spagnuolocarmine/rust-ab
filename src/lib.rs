@@ -15,6 +15,19 @@ use std::error::Error;
 pub use std::time::Duration;
 pub use rayon::prelude::*;
 
+#[macro_use]
+mod no_exported{
+    #[macro_export]
+    macro_rules! replace_expr {
+        ($_t:tt $sub:expr) => {$sub};
+    }
+    
+    #[macro_export]
+    macro_rules! count_tts {
+        ($($tts:tt)*) => {<[()]>::len(&[$(replace_expr!($tts ())),*])};
+    }
+}
+
 ///Create a csv file with the experiment results
 ///"DataFrame" trait allow the function to know field names and
 ///params list + output list for each configuration runned
@@ -49,18 +62,18 @@ pub trait DataFrame {
 ///states
 ///other parametes
 macro_rules! simulate {
-    ($step:expr, $sch:expr, $s:expr) => {{
+    ($step:expr, $s:expr) => {{
         let mut state = Box::new($s.as_state());
         let n_step: u128 = $step;
-        let schedule: &Schedule = &$sch;
+        let mut schedule: Schedule = Schedule::new();
 
-        state.init(&mut $sch);
+        state.init(&mut schedule);
 
         println!("Num of steps {}", n_step);
 
         let start = std::time::Instant::now();
         for _ in 0..n_step {
-            $sch.step(&mut state);
+            schedule.step(&mut state);
         }
 
         let run_duration = start.elapsed();
@@ -68,21 +81,21 @@ macro_rules! simulate {
         println!("Time elapsed in testing schedule is: {:?}", run_duration);
         println!(
             "Total Step:{}\nStep for seconds: {:?}",
-            $sch.step,
-            $sch.step as f64 / (run_duration.as_nanos() as f64 * 1e-9)
+            schedule.step,
+            schedule.step as f64 / (run_duration.as_nanos() as f64 * 1e-9)
         );
 
         (
             run_duration,
-            $sch.step as f64 / (run_duration.as_nanos() as f64 * 1e-9),
+            schedule.step as f64 / (run_duration.as_nanos() as f64 * 1e-9),
         )
     }};
 
-    ($step:expr, $sch:expr, $s:expr, $reps:expr) => {{
+    ($step:expr, $s:expr, $reps:expr) => {{
         let mut results: Vec<(Duration, f64)> = Vec::new();
         for i in 0..$reps {
             println!("------\nRun {}", i + 1);
-            results.push(simulate!($step, $sch, $s));
+            results.push(simulate!($step, $s));
         }
 
         results
@@ -145,7 +158,7 @@ macro_rules! build_dataframe {
 
         impl DataFrame for $name{
             fn field_names() -> &'static [&'static str] {
-                static NAMES: &'static [&'static str] = &["Configuration", "Run", $(stringify!($input),)* $(stringify!($output),)*  "Run Duration", "Step per sec"];
+                static NAMES: &'static [&'static str] = &["FrameRow", "Run", $(stringify!($input),)* $(stringify!($output),)*  "Run Duration", "Step per sec"];
                 NAMES
             }
 
@@ -191,6 +204,7 @@ macro_rules! build_dataframe {
     };
 }
 
+
 ///Brute force parameter exploration
 #[macro_export]
 ///step = simulation step number,
@@ -200,26 +214,61 @@ macro_rules! build_dataframe {
 ///output[output: tipo]
 macro_rules! explore {
     //exploration with explicit output parameters
-    ($nstep: expr, $sch:expr, $s:expr, $rep_conf:expr, input {$($input:ident: $input_ty: ty )*}, output [$($output:ident: $output_ty: ty )*]) => {{
+    ($nstep: expr, $s:expr, $rep_conf:expr, input {$($input:ident: $input_ty: ty )*}, output [$($output:ident: $output_ty: ty )*]) => {{
         //typecheck
         let _rep_conf = $rep_conf as usize;
         let __nstep = $nstep as u128;
 
-        let _schedule:&Schedule = &$sch;
         println!("Calculate number of configuration");
         let mut n_conf:usize = 1;
         $( n_conf *= $input.len(); )*
 
         println!("n_conf {}", n_conf);
 
-        build_dataframe!(Configuration, input {$( $input:$input_ty)*, }, output[ $( $output:$output_ty )*]);
+        build_dataframe!(FrameRow, input {$( $input:$input_ty)*, }, output[ $( $output:$output_ty )*]);
 
-        let mut dataframe: Vec<Configuration>  = Vec::new();
 
-        for i in 0..n_conf{
+        //Cartesian product with variadics, to build a table with all parameter combinations
+        //They are of different type, so i have to work with indexes
+        let mut dataframe: Vec<FrameRow>  = Vec::new();
+        let param_len = count_tts!($($input)*);
+        
+        let mut config_table_index:Vec<Vec<usize>> = (0..param_len).into_par_iter().map(|index_param|{
+            let mut row:Vec<usize> = Vec::with_capacity(n_conf);
+            let mut rep = n_conf;
+            let mut input_size:usize = 0;
+            {
+                let mut i = 0;
+                $(
+                    if index_param >= i {
+                        rep /= $input.len();
+                        if index_param == i {
+                            input_size = $input.len();
+                        }
+                        i+=1;
+                    }                 
+                )*
 
+                println!("{})REP {}, input {}", index_param, rep, input_size);
+            }
+
+            let mut i = 0;
+            for _ in 0..n_conf{
+
+                for _ in 0..rep{          
+                        row.push(i);
+                }
+                i = (i + 1) % input_size;
+            }
+            row
+        })
+        .collect();
+
+        for i in 0..n_conf{     
+            let mut row_count = 0;
             $(
-                $s.$input = $input[i / (n_conf / $input.len())];
+                $s.$input = $input[config_table_index[row_count][i]];
+                row_count+=1;
             )*
 
             println!("-----\nCONF {}", i);
@@ -229,8 +278,8 @@ macro_rules! explore {
 
             for j in 0..$rep_conf{
                 println!("------\nRun {}", j+1);
-                let result = simulate!($nstep, $sch, $s);
-                dataframe.push( Configuration::new(i as u128, j + 1 as u128, $($input[i / (n_conf / $input.len())],)* $($s.$output,)* result.0, result.1));
+                let result = simulate!($nstep, $s);
+                dataframe.push( FrameRow::new(i as u128, j + 1 as u128, $($s.$input,)* $($s.$output,)* result.0, result.1));
             }
 
         }
@@ -238,8 +287,8 @@ macro_rules! explore {
     }};
 
     //exploration taking default output: total time and step per second
-    ($nstep: expr, $sch:expr, $agent_ty:ty, $s:expr, $rep_conf:expr, $($input:ident: $input_ty: ty )*) => {
-        explore!($nstep, $sch, $agent_ty, $s, $rep_conf, input { $($input: $input_ty)*}, output [])
+    ($nstep: expr, $s:expr, $rep_conf:expr, $($input:ident: $input_ty: ty )*) => {
+        explore!($nstep, $s, $rep_conf, input {$($input: $input_ty)*}, output [])
     }
 }
 
@@ -250,34 +299,67 @@ macro_rules! explore_parallel {
         //typecheck
         let _rep_conf = $rep_conf as usize;
         let _nstep = $nstep as u128;
-        //let _schedule:&Schedule = &$sch;
         
         println!("Calculate number of configuration");
         let mut n_conf:usize = 1;
         $( n_conf *= $input.len(); )*
         println!("n_conf {}", n_conf);
         
-        build_dataframe!(Configuration, input {$( $input:$input_ty)*, }, output[ $( $output:$output_ty )*]);
-        //let mut dataframe: Vec<Configuration> = Vec::with_capacity(n_conf * $rep_conf);
+        build_dataframe!(FrameRow, input {$( $input:$input_ty)*, }, output[ $( $output:$output_ty )*]);
+        
+        //let mut dataframe: Vec<FrameRow> = Vec::with_capacity(n_conf * $rep_conf);
 
-        let dataframe: Vec<Configuration> = (0..n_conf*$rep_conf).into_par_iter().map( |run| {
+        //---
+
+        let param_len = count_tts!($($input)*);  
+        let mut config_table_index:Vec<Vec<usize>> = (0..param_len).into_par_iter().map(|index_param|{
+            let mut row:Vec<usize> = Vec::with_capacity(n_conf);
+            let mut rep = n_conf;
+            let mut input_size:usize = 0;
+            {
+                let mut i = 0;
+                $(
+                    if index_param >= i {
+                        rep /= $input.len();
+                        if index_param == i {
+                            input_size = $input.len();
+                        }
+                        i+=1;
+                    }                 
+                )*
+
+                println!("{})REP {}, input {}", index_param, rep, input_size);
+            }
+
+            let mut i = 0;
+            for _ in 0..n_conf{
+
+                for _ in 0..rep{          
+                        row.push(i);
+                }
+                i = (i + 1) % input_size;
+            }
+            row
+        })
+        .collect();
+
+        //---
+
+        let dataframe: Vec<FrameRow> = (0..n_conf*$rep_conf).into_par_iter().map( |run| {
             let i  = run / $rep_conf;
-            let mut schedule  = Schedule::new();
             let mut state = <$state_name>::new( $( $parameter ),*);
+           
+
+            let mut row_count = 0;
             $(
-                state.$input = $input[i / (n_conf / $input.len())];
+                state.$input = $input[config_table_index[row_count][i]];
+                row_count+=1;
             )*
 
-         /*    println!("-----\nCONF {}", i);
-            $(
-                println!("{}: {}", stringify!(state.$input), state.$input);
-            )*
- */ 
-            state.init(&mut schedule);
-            let result = simulate!($nstep, schedule, state);
+            let result = simulate!($nstep, state);
 
             println!("conf {}, rep {}, run {}", i, run / n_conf, run);
-            Configuration::new(i as u128, (run / n_conf) as u128, $($input[i / (n_conf / $input.len())],)* $(state.$output,)* result.0, result.1)
+            FrameRow::new(i as u128, (run / n_conf) as u128, $(state.$input,)* $(state.$output,)* result.0, result.1)
         })
         .collect();
 
@@ -293,7 +375,7 @@ macro_rules! explore_parallel {
             for j in 0..$rep_conf{
                 println!("------\nRun {}", j+1);
                 let result = simulate!($nstep, $sch, $s);
-                dataframe.push( Configuration::new(i as u128, j + 1 as u128, $($input[i / (n_conf / $input.len())],)* $($s.$output,)* result.0, result.1));
+                dataframe.push( FrameRow::new(i as u128, j + 1 as u128, $($input[i / (n_conf / $input.len())],)* $($s.$output,)* result.0, result.1));
             }
         } */
         dataframe
