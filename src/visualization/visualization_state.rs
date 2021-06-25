@@ -77,8 +77,8 @@ pub trait VisualizationState<S: State>: Send + Sync {
     /// ```
     fn on_init(
         &self,
-        commands: Commands,
-        sprite_render_factory: AssetHandleFactoryResource,
+        commands: &mut Commands,
+        sprite_render_factory: &mut AssetHandleFactoryResource,
         state: &mut S,
         schedule: &mut Schedule,
         sim: &mut SimulationDescriptor,

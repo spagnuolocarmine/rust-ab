@@ -16,7 +16,7 @@ use crate::visualization::wrappers::{ActiveSchedule, ActiveState};
 /// then calls the user provided init callback.
 pub fn init_system<I: VisualizationState<S> + 'static, S: State>(
     on_init: Res<I>,
-    sprite_factory: AssetHandleFactoryResource,
+    mut sprite_factory: AssetHandleFactoryResource,
     mut commands: Commands,
     mut state_resource: ResMut<ActiveState<S>>,
     mut schedule_resource: ResMut<ActiveSchedule>,
@@ -51,13 +51,13 @@ pub fn init_system<I: VisualizationState<S> + 'static, S: State>(
     };
 
     commands.spawn_bundle(camera_bundle);
-    /*on_init.on_init(
-        commands,
-        sprite_factory,
+    on_init.on_init(
+        &mut commands,
+        &mut sprite_factory,
         &mut state_resource.0,
         &mut schedule_resource.0,
         &mut *sim,
-    );*/
+    );
     on_init.setup_graphics(
         &mut schedule_resource.0,
         &mut commands,

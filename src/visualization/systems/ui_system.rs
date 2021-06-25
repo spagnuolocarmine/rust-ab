@@ -19,7 +19,7 @@ pub fn ui_system<I: VisualizationState<S> + Clone + 'static, S: State>(
     mut active_schedule_wrapper: ResMut<ActiveSchedule>,
     mut active_state_wrapper: ResMut<ActiveState<S>>,
     on_init: Res<I>,
-    sprite_factory: AssetHandleFactoryResource,
+    mut sprite_factory: AssetHandleFactoryResource,
     query: Query<Entity, Without<Camera>>,
     diagnostics: Res<Diagnostics>,
     mut commands: Commands,
@@ -57,13 +57,13 @@ pub fn ui_system<I: VisualizationState<S> + Clone + 'static, S: State>(
                         let mut new_schedule = Schedule::new();
                         active_state_wrapper.0.reset();
                         active_state_wrapper.0.init(&mut new_schedule);
-                        /*on_init.on_init(
-                            commands,
-                            sprite_factory,
+                        on_init.on_init(
+                            &mut commands,
+                            &mut sprite_factory,
                             &mut active_state_wrapper.0,
                             &mut new_schedule,
                             &mut *sim_data,
-                        );*/
+                        );
                         on_init.setup_graphics(
                             &mut new_schedule,
                             &mut commands,
