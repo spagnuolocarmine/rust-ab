@@ -248,8 +248,6 @@ macro_rules! explore {
                         i+=1;
                     }                 
                 )*
-
-                println!("{})REP {}, input {}", index_param, rep, input_size);
             }
 
             let mut i = 0;
@@ -287,9 +285,10 @@ macro_rules! explore {
     }};
 
     //exploration taking default output: total time and step per second
-    ($nstep: expr, $s:expr, $rep_conf:expr, $($input:ident: $input_ty: ty )*) => {
+    ($nstep: expr, $s:expr, $rep_conf:expr, input {$($input:ident: $input_ty: ty )*}) => {
         explore!($nstep, $s, $rep_conf, input {$($input: $input_ty)*}, output [])
     }
+
 }
 
 #[macro_export]
@@ -328,7 +327,6 @@ macro_rules! explore_parallel {
                     }                 
                 )*
 
-                println!("{})REP {}, input {}", index_param, rep, input_size);
             }
 
             let mut i = 0;
@@ -381,9 +379,19 @@ macro_rules! explore_parallel {
         dataframe
     }};
 
-/*     //exploration taking default output: total time and step per second
-    ($nstep: expr, $sch:expr, $agent_ty:ty, $s:expr, $rep_conf:expr, $($input:ident: $input_ty: ty )*) => {
-            explore!($nstep, $sch, $agent_ty, $s, $rep_conf, input { $($input: $input_ty)*}, output [])
-    } */
+    //exploration taking default output and no state constructor: total time and step per second
+    ($nstep: expr, $rep_conf:expr, $state_name:ty, input {$($input:ident: $input_ty: ty )*}) => {
+            explore_parallel!($nstep, $rep_conf, $state_name, param (), input { $($input: $input_ty)*}, output [])
+    };
+
+    //exploration taking default output: total time and step per second
+    ($nstep: expr, $rep_conf:expr, $state_name:ty, param ($($parameter:expr,)*), input {$($input:ident: $input_ty: ty )*}) => {
+            explore_parallel!($nstep, $rep_conf, $state_name, param ($($parameter,)*), input { $($input: $input_ty)*}, output [])
+    }; 
+
+    //exploration with no state params constructor
+    ($nstep: expr, $rep_conf:expr, $state_name:ty, input {$($input:ident: $input_ty: ty )*}, output [$($output:ident: $output_ty: ty )*]) => {
+            explore_parallel!($nstep, $rep_conf, $state_name, param (), input { $($input: $input_ty)*}, output [])
+    };
 
 }

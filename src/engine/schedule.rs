@@ -49,7 +49,7 @@ pub struct Schedule {
     pub pool: Option<ThreadPool>,
     // Mainly used in the visualization to render newly scheduled agents.
     // This is cleared at the start of each step.
-    pub newly_scheduled: Vec<Box<dyn Agent>>,
+    pub to_visualize: Vec<Box<dyn Agent>>,
 }
 
 #[derive(Clone)]
@@ -77,7 +77,7 @@ impl Schedule {
                     time: 0.0,
                     events: Mutex::new(PriorityQueue::new()),
                     pool: Some(ThreadPoolBuilder::new().num_threads(*THREAD_NUM).build().unwrap()),
-                    newly_scheduled: Vec::new()
+                    to_visualize: Vec::new()
                 }
             }else{
                 return Schedule {
@@ -85,7 +85,7 @@ impl Schedule {
                     time: 0.0,
                     events: Mutex::new(PriorityQueue::new()),
                     pool: None,
-                    newly_scheduled: Vec::new()
+                    to_visualize: Vec::new()
                 }
             }
         }
@@ -100,7 +100,7 @@ impl Schedule {
                     time: 0.0,
                     events: Mutex::new(PriorityQueue::new()),
                     pool: Some(ThreadPoolBuilder::new().num_threads(thread_num).build().unwrap()),
-                    newly_scheduled: Vec::new()
+                    to_visualize: Vec::new()
                 }
             }else{
                 return Schedule {
@@ -108,13 +108,16 @@ impl Schedule {
                     time: 0.0,
                     events: Mutex::new(PriorityQueue::new()),
                     pool: None,
-                    newly_scheduled: Vec::new()
+                    to_visualize: Vec::new()
                 }
             }
         }
     }
 
     pub fn schedule_once(&mut self, agent: AgentImpl, the_time: f64, the_ordering: i64) {
+        if self.step > 0 {
+            self.to_visualize.push(agent.agent.clone());
+        }
         self.events.lock().unwrap().push(
             agent,
             Priority {
@@ -141,7 +144,7 @@ impl Schedule {
         if #[cfg(feature ="parallel")]{
 
 
-        pub fn step(&mut self, state: &Box<dyn State>){
+        pub fn step(&mut self,state: &mut Box<&mut dyn State>){
             self.newly_scheduled.clear();
             let thread_num = self.pool.as_ref().unwrap().current_num_threads();
 
@@ -203,15 +206,17 @@ impl Schedule {
                 }
             }
 
+                // state.before_step(...)
+
             self.pool.as_ref().unwrap().scope( |scope| {
                 for _ in 0..thread_num{
                     let batch = cevents.pop().unwrap();
                     scope.spawn(|_| {
                         let mut reschedule = Vec::with_capacity(batch.len());
                         for mut item in batch {
-                            item.agentimpl.agent.step(&state);
-                            let should_remove = item.agentimpl.agent.should_remove(&state);
-                            let should_reproduce = item.agentimpl.agent.should_reproduce(&state);
+                            item.agentimpl.agent.step(state);
+                            let should_remove = item.agentimpl.agent.should_remove(state);
+                            let should_reproduce = item.agentimpl.agent.should_reproduce(state);
 
                             if item.agentimpl.repeating && !should_remove {
                                 reschedule.push( ( item.agentimpl, Priority{ time: item.priority.time+1.0, ordering: item.priority.ordering}) );
@@ -220,11 +225,11 @@ impl Schedule {
                             if let Some(new_agents) = should_reproduce {
                                 for (new_agent, schedule_options) in new_agents {
                                     let ScheduleOptions{ordering, repeating} = schedule_options;
-                                    let agent = *new_agent;
-                                    let mut new_agent_impl = AgentImpl::new(agent.clone());
+                                    //let agent = *new_agent;
+                                    let mut new_agent_impl = AgentImpl::new(new_agent.clone());
                                     new_agent_impl.repeating = repeating;
                                     reschedule.push((new_agent_impl, Priority{time: item.priority.time + 1., ordering}));
-                                    self.newly_scheduled.push(agent);
+                                    //self.newly_scheduled.push(new_agent.clone());
                                 }
                             }
                         }
@@ -243,7 +248,7 @@ impl Schedule {
     }
     else{
         pub fn step(&mut self,state: &mut Box<&mut dyn State>){
-            self.newly_scheduled.clear();
+            state.before_step(self);
             if self.step == 0{
                 state.update(self.step);
             }
@@ -299,7 +304,7 @@ impl Schedule {
                 item.agentimpl.agent.step(state);
 
                 let should_remove = item.agentimpl.agent.should_remove(state);
-                let should_reproduce = item.agentimpl.agent.should_reproduce(state);
+                //let should_reproduce = item.agentimpl.agent.should_reproduce(state);
 
                 if item.agentimpl.repeating && !should_remove {
                     self.schedule_once(
@@ -309,20 +314,23 @@ impl Schedule {
                     );
                 }
 
-                if let Some(new_agents) = should_reproduce {
+                /*if let Some(new_agents) = should_reproduce {
                     for (new_agent, schedule_options) in new_agents {
                         let ScheduleOptions{ordering, repeating} = schedule_options;
                         //let agent = *new_agent;
                         let mut new_agent_impl = AgentImpl::new(new_agent.clone());
                         new_agent_impl.repeating = repeating;
                         self.schedule_once(new_agent_impl, item.priority.time + 1., ordering);
-                        self.newly_scheduled.push(new_agent.clone());
+                        //self.newly_scheduled.push(new_agent.clone());
                     }
-                }
+                }*/
             }
 
             state.update(self.step);
             // println!("Time spent calling step method, step {} : {:?}",self.step,start.elapsed());
+            state.after_step(self);
+
+            self.to_visualize.clear();
 
             }
 
