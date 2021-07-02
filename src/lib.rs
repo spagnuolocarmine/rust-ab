@@ -357,7 +357,7 @@ macro_rules! explore_parallel {
             let result = simulate!($nstep, state);
 
             println!("conf {}, rep {}, run {}", i, run / n_conf, run);
-            FrameRow::new(i as u128, (run / n_conf) as u128, $(state.$input,)* $(state.$output,)* result.0, result.1)
+            FrameRow::new(i as u128, (run % $rep_conf) as u128, $(state.$input,)* $(state.$output,)* result.0, result.1)
         })
         .collect();
 
