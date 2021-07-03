@@ -2,10 +2,12 @@ use std::fmt::Display;
 use std::hash::Hash;
 
 use rand::prelude::SliceRandom;
+use rand::SeedableRng;
 
 use crate::engine::field::field::Field;
 use crate::utils::dbdashmap::DBDashMap;
 
+#[derive(Clone)]
 pub enum EdgeOptions<L: Clone + Hash + Display> {
     Simple,
     Labeled(L),
@@ -67,19 +69,19 @@ macro_rules! preferential_attachment_BA {
     (  $nodes:expr, $network:expr, $node_type:ty, $edge_opt:ty) => {{
         let n_nodes = $nodes.len();
         let mut net: Network<$node_type, $edge_opt> = $network;
-        net.removeAllEdges();
+        net.remove_all_edges();
 
         if n_nodes == 0 {
             return;
         }
-        net.addNode(&$nodes[0]);
+        net.add_node(&$nodes[0]);
         net.edges.update();
         if n_nodes == 1 {
             return;
         }
-        net.addNode(&$nodes[1]);
+        net.add_node(&$nodes[1]);
 
-        net.addEdge(&$nodes[0], &$nodes[1], Simple);
+        net.add_node(&$nodes[0], &$nodes[1], Simple);
         net.edges.update();
 
         let init_edge: usize = 1;
@@ -97,29 +99,29 @@ macro_rules! preferential_attachment_BA {
     (  $nodes:expr, $network:expr, $node_type:ty, $edge_opt:ty, $init_edges:expr) => {{
         let n_nodes = $nodes.len();
         let edge_to_gen = $init_edges as usize;
-        let mut net: Network<$node_type, $edge_opt> = $network;
-        net.removeAllEdges();
+        //let mut net: Network<$node_type, $edge_opt> = $network;
+        $network.remove_all_edges();
 
         if n_nodes == 0 {
             return;
         }
-        net.addNode(&$nodes[0]);
-        net.edges.update();
+        $network.add_node(&$nodes[0]);
+        $network.edges.update();
         if n_nodes == 1 {
             return;
         }
-        net.addNode(&$nodes[1]);
+        $network.add_node(&$nodes[1]);
 
-        net.addEdge(&$nodes[0], &$nodes[1], Simple);
-        net.edges.update();
+        $network.add_edge(&$nodes[0], &$nodes[1], Simple);
+        $network.edges.update();
         for i in 2..n_nodes {
             let node = $nodes[i] as $node_type;
 
-            net.add_prob_edge(&node, &edge_to_gen);
-            net.edges.update();
+            $network.add_prob_edge(&node, &edge_to_gen);
+            $network.edges.update();
         }
 
-        $network = net;
+        //$network = net;
     }};
 }
 
@@ -143,9 +145,9 @@ impl<O: Hash + Eq + Clone + Display, L: Clone + Hash + Display> Network<O, L> {
             dist.push((n, n_edges as i32));
         }
 
-        let mut rng = rand::thread_rng();
-        //let chosen = dist.choose_weighted(&mut rng, |dist| dist.1).unwrap().0;
-        //self.add_edge(u, chosen, EdgeOptions::Simple);
+        let mut rng = rand::thread_rng(); //rand::rngs::StdRng::seed_from_u64(15);
+                                          //let chosen = dist.choose_weighted(&mut rng, |dist| dist.1).unwrap().0;
+                                          //self.add_edge(u, chosen, EdgeOptions::Simple);
 
         let amount: usize = if net_nodes.len() < *n_sample {
             net_nodes.len()
@@ -170,7 +172,7 @@ impl<O: Hash + Eq + Clone + Display, L: Clone + Hash + Display> Network<O, L> {
 
     pub fn add_edge(&self, u: &O, v: &O, edge_options: EdgeOptions<L>) -> Option<Edge<O, L>> {
         //println!("add_edge");
-        let e = Edge::new(u.clone(), v.clone(), edge_options);
+        let e = Edge::new(u.clone(), v.clone(), edge_options.clone());
         match self.edges.get_mut(u) {
             Some(mut uedges) => {
                 uedges.push(e.clone());
@@ -184,10 +186,12 @@ impl<O: Hash + Eq + Clone + Display, L: Clone + Hash + Display> Network<O, L> {
         if !self.direct {
             match self.edges.get_mut(v) {
                 Some(mut vedges) => {
+                    let e = Edge::new(v.clone(), u.clone(), edge_options.clone());
                     vedges.push(e.clone());
                 }
                 None => {
                     let mut vec = Vec::new();
+                    let e = Edge::new(v.clone(), u.clone(), edge_options.clone());
                     vec.push(e.clone());
                     self.edges.insert(v.clone(), vec);
                 }
@@ -313,5 +317,83 @@ impl<O: Hash + Eq + Clone + Display, L: Clone + Hash + Display> Field for Networ
     }
     fn lazy_update(&mut self) {
         self.edges.update();
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use std::fmt;
+    use std::hash::{Hash, Hasher};
+
+    use crate::engine::field::field::Field;
+    use crate::engine::field::network::EdgeOptions::Simple;
+    use crate::engine::field::network::Network;
+
+    #[derive(Clone, Copy, Debug)]
+    struct Node {
+        pub id: u128,
+        pub value: u64,
+    }
+
+    impl Hash for Node {
+        fn hash<H>(&self, state: &mut H)
+        where
+            H: Hasher,
+        {
+            self.id.hash(state);
+            //    state.write_u128(self.id);
+            //    state.finish();
+        }
+    }
+
+    impl Eq for Node {}
+
+    impl PartialEq for Node {
+        fn eq(&self, other: &Node) -> bool {
+            self.id == other.id
+        }
+    }
+
+    impl fmt::Display for Node {
+        fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+            write!(f, "{}", self.id)
+        }
+    }
+
+    #[test]
+    fn network() {
+        let mut network = Network::<Node, String>::new(false);
+        let first_node = Node { id: 1, value: 1 };
+        let second_node = Node { id: 2, value: 2 };
+        // Two nodes, first and second, with a single edge connecting the two
+        network.add_node(&first_node);
+        network.add_node(&second_node);
+        network.add_edge(&first_node, &second_node, Simple);
+
+        network.update();
+
+        // Was the network double buffer updated correctly?
+        assert!(network.get_edge(&first_node, &second_node).is_some());
+
+        // Are we able to fetch all the connected nodes relative to a specific node?
+        let neighbors = network.get_edges(&first_node).unwrap();
+        assert!(!neighbors.is_empty());
+        let fetched_edge = neighbors.first().unwrap();
+        assert_eq!(fetched_edge.u.clone(), first_node);
+        assert_eq!(fetched_edge.v.clone(), second_node);
+
+        let mut new_first_node = first_node.clone();
+        new_first_node.value = 10;
+        let mut new_second_node = second_node.clone();
+        new_second_node.value = 20;
+        network.update_edge(&new_first_node, &new_second_node, Simple);
+
+        network.update();
+        network.update();
+
+        let neighbors = network.get_edges(&first_node).unwrap();
+        let fetched_edge = neighbors.first().unwrap();
+        assert_eq!(fetched_edge.u.value, 10);
+        assert_eq!(fetched_edge.v.value, 20);
     }
 }

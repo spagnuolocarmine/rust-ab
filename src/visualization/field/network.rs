@@ -9,6 +9,7 @@ use crate::bevy::prelude::{Res, ResMut, Vec2};
 use crate::engine::agent::Agent;
 use crate::engine::field::network::{Edge, Network};
 use crate::engine::location::Real2D;
+use crate::engine::state::State;
 use crate::visualization::agent_render::AgentRender;
 use crate::visualization::utils::arrow::Arrow;
 use crate::visualization::wrappers::ActiveState;
@@ -48,19 +49,14 @@ pub struct EdgeRenderInfo {
 /// Allows rendering the edges of a graph as customizable lines through the Bevy Canvas plugin.
 /// As for now (27/05/2021), this does NOT work in a WebGL context due to the bevy_canvas plugin not
 /// being compatible with WebGL.
-pub trait NetworkRender<
-    O: Hash + Eq + Clone + Display,
-    L: Clone + Hash + Display,
-    A: 'static + Agent + AgentRender + Clone + Send,
->
-{
+pub trait NetworkRender<O: Hash + Eq + Clone + Display, L: Clone + Hash + Display, S: State> {
     /// Specify how to fetch a reference to the network from the state.
-    fn get_network(state: &A::SimState) -> &Network<O, L>;
+    fn get_network(state: &S) -> &Network<O, L>;
 
     /// Called for each edge to let the user specify how it should be rendered
     fn get_edge_info(edge: &Edge<O, L>) -> EdgeRenderInfo;
 
-    fn render(state_wrapper: Res<ActiveState<A>>, mut canvas: ResMut<Canvas>) {
+    fn render(state_wrapper: Res<ActiveState<S>>, mut canvas: ResMut<Canvas>) {
         if cfg!(target_arch = "wasm32") {
             panic!("Currently network visualization does not support WebGL shaders. https://github.com/Nilirad/bevy_canvas/blob/main/src/render/mod.rs#L257");
         }

@@ -197,6 +197,10 @@ impl<A: Location2D<Real2D> + Clone + Hash + Eq + Display + Copy> Field2D<A> {
             None => None,
         }
     }
+
+    pub fn remove_object(&self, agent: &A) {
+        self.fpos.remove(agent);
+    }
 }
 
 fn t_transform(n: i64, size: i64) -> i64 {
