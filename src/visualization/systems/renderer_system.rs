@@ -16,7 +16,7 @@ pub fn renderer_system<I: VisualizationState<S> + Clone + 'static, S: State>(
         &mut Visible,
         &mut Handle<ColorMaterial>,
     )>,
-    state_wrapper: Res<ActiveState<S>>,
+    mut state_wrapper: ResMut<ActiveState<S>>,
     schedule_wrapper: Res<ActiveSchedule>,
     mut sprite_factory: AssetHandleFactoryResource,
     mut commands: Commands,
@@ -33,7 +33,7 @@ pub fn renderer_system<I: VisualizationState<S> + Clone + 'static, S: State>(
      */
     if !sim_data.paused {
         vis_state.before_render(
-            &state_wrapper.0,
+            &mut state_wrapper.0,
             &schedule_wrapper.0,
             &mut commands,
             &mut sprite_factory,

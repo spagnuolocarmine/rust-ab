@@ -136,7 +136,7 @@ pub trait VisualizationState<S: State>: Send + Sync {
 
     /// The user must specify which AgentRender is associated to which Agent through this method
     /// TODO: how can the developer connect the two? Type string identifier?
-    fn get_agent_render(&self, agent: &Box<dyn Agent>, state: &mut S) -> Box<dyn AgentRender>;
+    fn get_agent_render(&self, agent: &Box<dyn Agent>, state: &S) -> Box<dyn AgentRender>;
 
     fn get_agent(
         &self,
@@ -146,7 +146,7 @@ pub trait VisualizationState<S: State>: Send + Sync {
 
     fn before_render(
         &mut self,
-        state: &S,
+        state: &mut S,
         schedule: &Schedule,
         commands: &mut Commands,
         sprite_factory: &mut AssetHandleFactoryResource,
